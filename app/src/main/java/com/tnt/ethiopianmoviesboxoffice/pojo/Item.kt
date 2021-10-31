@@ -1,6 +1,7 @@
 package com.tnt.ethiopianmoviesboxoffice.pojo
 
-import com.google.firebase.database.Exclude
+import com.google.firebase.firestore.Exclude
+
 
 class Item(
     var image: String? = null,
