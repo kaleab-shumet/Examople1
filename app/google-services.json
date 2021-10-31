@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "1039242456205",
+    "firebase_url": "https://ethiopian-movies-box-office-default-rtdb.firebaseio.com",
+    "project_id": "ethiopian-movies-box-office",
+    "storage_bucket": "ethiopian-movies-box-office.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1039242456205:android:4c3a0e68b2d19f94e9c6c4",
+        "android_client_info": {
+          "package_name": "com.tnt.ethiopianmoviesboxoffice"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1039242456205-l0r7ekbrmapqkuae9ka597cqofiu8il5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAykUHitMlNBOX90YuWyiav8RBD6vOa-LQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1039242456205-l0r7ekbrmapqkuae9ka597cqofiu8il5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
