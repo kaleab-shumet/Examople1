@@ -8,3 +8,6 @@ data class MonthMovies (
     val thumbnailUrl: String? = null,
     val statistics: Statistics? = null
 )
+{
+    var rank = 0
+}

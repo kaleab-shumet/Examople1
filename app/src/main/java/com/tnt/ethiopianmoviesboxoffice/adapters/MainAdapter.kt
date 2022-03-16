@@ -1,52 +1,75 @@
 package com.tnt.ethiopianmoviesboxoffice.adapters
 
-import android.content.Context
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.tnt.ethiopianmoviesboxoffice.Class.ItemsDescription
+import com.tnt.ethiopianmoviesboxoffice.Class.NativeAdClass
+import com.tnt.ethiopianmoviesboxoffice.Class.YearlyMoviesRecyclerData
+import com.tnt.ethiopianmoviesboxoffice.MainActivity
 import com.tnt.ethiopianmoviesboxoffice.R
 import com.tnt.ethiopianmoviesboxoffice.pojo.BoxOffice
-import android.content.ActivityNotFoundException
-
-import android.R.id
-
-import android.content.Intent
-import android.net.Uri
-import androidx.recyclerview.widget.GridLayoutManager
+import com.tnt.ethiopianmoviesboxoffice.pojo.MonthMovies
 
 
-class MainAdapter(private val boxOffice: BoxOffice) :
+class MainAdapter(private val mainActivity: MainActivity, boxOffice: BoxOffice) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    private lateinit var context: Context
-    private val horizontalScrollView: Int = 0
-    private val recyclerDescription: Int = 1
-    private val verticalScrollView: Int = 2
 
-    private val extra: Int = 2
+    private val tag: String = "MainAdapter"
 
-    init{
+    private val itemDescriptionViewType: Int = 0
+    private val monthlyMoviesViewType: Int = 1
+    private val yearlyMoviesRecyclerType: Int = 2
+    private val nativeAdViewType: Int = 3
+
+    private val itemsArrayList: ArrayList<Any> = ArrayList()
+
+
+    init {
+
         boxOffice.monthMovies = boxOffice.monthMovies!!.reversed()
+
+        var rankCounter = 25
+        for (item in boxOffice.monthMovies!!){
+            item.rank = rankCounter
+            rankCounter--
+        }
+
+        itemsArrayList.add(ItemsDescription(mainActivity.getString(R.string.best_of_month)))
+        itemsArrayList.addAll(boxOffice.monthMovies!!)
+        itemsArrayList.add(ItemsDescription(mainActivity.getString(R.string.best_of_year)))
+        itemsArrayList.add(YearlyMoviesRecyclerData(boxOffice.yearMovies!!))
+
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        context = parent.context
-        val layoutInflater = LayoutInflater.from(context)
+        val layoutInflater = LayoutInflater.from(this.mainActivity)
         return when (viewType) {
-            horizontalScrollView -> {
+            yearlyMoviesRecyclerType -> {
                 val horizontalMovieItem =
                     layoutInflater.inflate(R.layout.horizontal_movie_view, parent, false)
-                HorizontalScrollViewHolder(horizontalMovieItem)
+                YearlyMoviesViewHolder(horizontalMovieItem)
             }
-            recyclerDescription -> {
+            itemDescriptionViewType -> {
                 val recyclerDescription =
-                    layoutInflater.inflate(R.layout.recycler_description, parent, false)
+                    layoutInflater.inflate(R.layout.item_list_description, parent, false)
                 RecyclerDescriptionViewHolder(recyclerDescription)
+            }
+            nativeAdViewType -> {
+                val nativeAdView =
+                    layoutInflater.inflate(R.layout.native_ad_container_layout, parent, false)
+                NativeAdViewHolder(nativeAdView)
             }
             else -> {
                 val mainMovieItem =
@@ -56,108 +79,155 @@ class MainAdapter(private val boxOffice: BoxOffice) :
         }
     }
 
+
+    class NativeAdViewHolder(
+        nativeAdView: View?
+    ) : RecyclerView.ViewHolder(nativeAdView!!) {
+        val nativeBannerAdContainer: LinearLayout =
+            itemView.findViewById(R.id.native_banner_ad_container)
+    }
+
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
 
         when (getItemViewType(position)) {
-            horizontalScrollView -> {
-                val horizontalScrollViewHolder: HorizontalScrollViewHolder = holder as HorizontalScrollViewHolder
-               /* horizontalScrollViewHolder.horizontalRecyclerView.layoutManager =
-                    LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)*/
+            yearlyMoviesRecyclerType -> {
+                val yearlyMoviesViewHolder: YearlyMoviesViewHolder =
+                    holder as YearlyMoviesViewHolder
 
-                horizontalScrollViewHolder.horizontalRecyclerView.layoutManager = GridLayoutManager(context, 2)
-                horizontalScrollViewHolder.horizontalRecyclerView.adapter = HorizontalAdapter(boxOffice.yearMovies)
+                val yearlyMoviesRecyclerData: YearlyMoviesRecyclerData =
+                    this.itemsArrayList[position] as YearlyMoviesRecyclerData
+
+                yearlyMoviesViewHolder.horizontalRecyclerView.layoutManager =
+                    GridLayoutManager(mainActivity, 2)
+                yearlyMoviesViewHolder.horizontalRecyclerView.adapter =
+                    YearlyMoviesAdapter(yearlyMoviesRecyclerData.yearMoviesList)
 
             }
-            recyclerDescription -> {
+            itemDescriptionViewType -> {
+
+                val itemsDescription: ItemsDescription =
+                    this.itemsArrayList[position] as ItemsDescription
                 val recyclerDescriptionViewHolder: RecyclerDescriptionViewHolder =
                     holder as RecyclerDescriptionViewHolder
-                val textStr = "Best of Month"
-//                recyclerDescriptionViewHolder
-//                    .recyclerDescriptionTv
-//                    .text = textStr
+                recyclerDescriptionViewHolder.recyclerDescriptionTv.text =
+                    itemsDescription.descriptionText
+            }
+            nativeAdViewType -> {
+
+                val nativeAdClass: NativeAdClass = itemsArrayList[position] as NativeAdClass
+                val nativeAdViewHolder: NativeAdViewHolder = holder as NativeAdViewHolder
+                if (nativeAdViewHolder.nativeBannerAdContainer.childCount < 1)
+                    nativeAdViewHolder.nativeBannerAdContainer.addView(nativeAdClass.adView)
+
+
             }
             else -> {
 
-                val posInd = position - 1;
-                if(posInd >= boxOffice.monthMovies?.size!!)return;
-                val selMovie = boxOffice.monthMovies!![posInd];
+                val monthMovie: MonthMovies = this.itemsArrayList[position] as MonthMovies
 
-                val videoId =  selMovie.videoId
-
+                val videoId = monthMovie.videoId
                 val mainViewHolder: MainViewHolder = holder as MainViewHolder
-                val titleStr = selMovie.title
-                val imageUrlStr = selMovie.imageUrl
+                val titleStr = monthMovie.title
+                val imageUrlStr = monthMovie.imageUrl
+
                 mainViewHolder.movieTitleTv.text = titleStr
 
-                val countStr = "#"+ (boxOffice.monthMovies!!.size - posInd).toString()
-                mainViewHolder.movieCountTv.text = countStr
 
-                Glide.with(context)
+                ("#"+monthMovie.rank).also { mainViewHolder.movieCountTv.text = it }
+
+                Glide.with(mainActivity)
                     .load(imageUrlStr)
                     .centerCrop()
                     .into(holder.movieImageView)
 
-                holder.movieImageView.setOnClickListener {
+                holder.itemView.setOnClickListener {
                     if (videoId != null) {
                         openVideo(videoId)
                     }
                 }
-                holder.movieTitleTv.setOnClickListener {
-                    if (videoId != null) {
-                        openVideo(videoId)
-                    }
-                }
-
 
             }
         }
     }
 
     override fun getItemCount(): Int {
-        return boxOffice.monthMovies!!.size + extra
+        return itemsArrayList.size
     }
 
     override fun getItemViewType(position: Int): Int {
-        return when (position) {
-            0 -> recyclerDescription
-            itemCount - 1 -> horizontalScrollView
-            else -> verticalScrollView
+        return when {
+            itemsArrayList[position] is ItemsDescription -> {
+                itemDescriptionViewType
+            }
+            itemsArrayList[position] is YearlyMoviesRecyclerData -> {
+                yearlyMoviesRecyclerType
+            }
+            itemsArrayList[position] is NativeAdClass -> {
+                nativeAdViewType
+            }
+            else -> {
+                monthlyMoviesViewType
+            }
         }
     }
 
-    fun openVideo(id: String){
+    private fun openVideo(id: String) {
         val appIntent = Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:$id"))
         val webIntent = Intent(
             Intent.ACTION_VIEW,
             Uri.parse("http://www.youtube.com/watch?v=$id")
         )
         try {
-            context.startActivity(appIntent)
+            mainActivity.startActivity(appIntent)
         } catch (ex: ActivityNotFoundException) {
-            context.startActivity(webIntent)
+            mainActivity.startActivity(webIntent)
         }
     }
 
-    class MainViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val movieImageView: ImageView = itemView.findViewById(R.id.vertical_movie_image_view)
-        val movieTitleTv: TextView = itemView.findViewById(R.id.vertical_movie_title_tv)
-        val movieCountTv: TextView = itemView.findViewById(R.id.count_tv)
-    }
+    fun setAd(nativeAdClass: NativeAdClass) {
+        Log.d(tag, "setAd: called")
 
-    class HorizontalScrollViewHolder(itemView: View) : RecyclerView.ViewHolder(
-        itemView
-    ) {
+        Log.d(tag, "setAd: before - itemsArrayList.size: "+this.itemsArrayList.size)
 
-        val horizontalRecyclerView: RecyclerView =
-            itemView.findViewById(R.id.horizontal_recycler_view)
-        val recyclerDescription: TextView = itemView.findViewById(R.id.recycler_description)
-    }
+        for (i in 1..this.itemsArrayList.size) {
+            val u = 6 * i - 1
 
-    class RecyclerDescriptionViewHolder(itemView: View) : RecyclerView.ViewHolder(
-        itemView
-    ) {
-        val recyclerDescriptionTv: TextView = itemView.findViewById(R.id.recycler_description_tv)
+            if (u < itemsArrayList.size) {
+
+                if (itemsArrayList[u] !is NativeAdClass) {
+
+                    itemsArrayList.add(u, nativeAdClass)
+                    notifyItemInserted(u)
+                    return
+
+                }
+
+            }
+        }
     }
 
 
 }
+
+class MainViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    val movieImageView: ImageView = itemView.findViewById(R.id.vertical_movie_image_view)
+    val movieTitleTv: TextView = itemView.findViewById(R.id.vertical_movie_title_tv)
+    val movieCountTv: TextView = itemView.findViewById(R.id.count_tv)
+}
+
+class YearlyMoviesViewHolder(itemView: View) : RecyclerView.ViewHolder(
+    itemView
+) {
+
+    val horizontalRecyclerView: RecyclerView =
+        itemView.findViewById(R.id.yearly_recycler_view)
+}
+
+class RecyclerDescriptionViewHolder(itemView: View) : RecyclerView.ViewHolder(
+    itemView
+) {
+    val recyclerDescriptionTv: TextView = itemView.findViewById(R.id.item_description_tv)
+}
+
+
+

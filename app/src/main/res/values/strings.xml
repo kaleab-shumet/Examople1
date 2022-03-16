@@ -3,4 +3,7 @@
 
     <string name="best_of_month">የወሩ ምርጥ 25 ፊልሞች / Top 25 movies of the month</string>
     <string name="best_of_year">የአመቱ ምርጥ 25 ፊልሞች / Best 25 Movies of the Year</string>
+    <string name="facebook_banner_id">232463305491088_232501512153934</string>
+    <string name="facebook_native_banner">232463305491088_301696098567808</string>
+    <string name="facebook_interstitial_ad_unit">232463305491088_232463848824367</string>
 </resources>
