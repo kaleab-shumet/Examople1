@@ -11,16 +11,17 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.tnt.ethiopianmoviesboxoffice.ActionAfterAd
+import com.tnt.ethiopianmoviesboxoffice.MainActivity
 import com.tnt.ethiopianmoviesboxoffice.R
 import com.tnt.ethiopianmoviesboxoffice.pojo.YearMovies
 
-class YearlyMoviesAdapter(private val yearMovies: List<YearMovies>?) :
+class YearlyMoviesAdapter(private val yearMovies: List<YearMovies>?, private val mainActivity: MainActivity) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-    private lateinit var context: Context
+
 
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-        context = parent.context
         val layoutInflater = LayoutInflater.from(parent.context)
         val horizontalMovieItem =
             layoutInflater.inflate(R.layout.horizontal_movie_item, parent, false)
@@ -36,37 +37,48 @@ class YearlyMoviesAdapter(private val yearMovies: List<YearMovies>?) :
         val titleStr = yearMovies!![position].title
 
         horizontalViewHolder.horizontalMovieTv.text = titleStr
-        Glide.with(context)
+        Glide.with(mainActivity)
             .load(yearMovies?.get(position)!!.imageUrl)
             .centerCrop()
             .into(horizontalViewHolder.horizontalMovieImageView)
 
-        horizontalViewHolder.horizontalMovieImageView.setOnClickListener {
-            if (videoId != null) {
-                openVideo(videoId)
+        horizontalViewHolder.itemView.setOnClickListener {
+
+            if(mainActivity.isAdLoaded()){
+                mainActivity.setActionAfterAd {
+                    if (videoId != null) {
+                        openVideo(videoId)
+                    }
+                }
+                mainActivity.interstitialAd.show()
             }
-        }
-        horizontalViewHolder.horizontalMovieTv.setOnClickListener {
-            if (videoId != null) {
-                openVideo(videoId)
+            else {
+                mainActivity.loadInterstitialAd()
+                if (videoId != null) {
+                    openVideo(videoId)
+                }
             }
+
+
         }
+
     }
 
     override fun getItemCount(): Int {
         return yearMovies!!.size
     }
-
-    fun openVideo(id: String){
+    private fun openVideo(id: String) {
         val appIntent = Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:$id"))
         val webIntent = Intent(
             Intent.ACTION_VIEW,
             Uri.parse("http://www.youtube.com/watch?v=$id")
         )
         try {
-            context.startActivity(appIntent)
+            appIntent.putExtra("force_fullscreen", true)
+            mainActivity.startActivity(appIntent)
         } catch (ex: ActivityNotFoundException) {
-            context.startActivity(webIntent)
+            webIntent.putExtra("force_fullscreen", true)
+            mainActivity.startActivity(webIntent)
         }
     }
 

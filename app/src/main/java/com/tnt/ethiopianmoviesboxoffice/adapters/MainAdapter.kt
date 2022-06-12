@@ -10,9 +10,11 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.tnt.ethiopianmoviesboxoffice.ActionAfterAd
 import com.tnt.ethiopianmoviesboxoffice.Class.ItemsDescription
 import com.tnt.ethiopianmoviesboxoffice.Class.NativeAdClass
 import com.tnt.ethiopianmoviesboxoffice.Class.YearlyMoviesRecyclerData
@@ -100,7 +102,7 @@ class MainAdapter(private val mainActivity: MainActivity, boxOffice: BoxOffice) 
                 yearlyMoviesViewHolder.horizontalRecyclerView.layoutManager =
                     GridLayoutManager(mainActivity, 2)
                 yearlyMoviesViewHolder.horizontalRecyclerView.adapter =
-                    YearlyMoviesAdapter(yearlyMoviesRecyclerData.yearMoviesList)
+                    YearlyMoviesAdapter(yearlyMoviesRecyclerData.yearMoviesList, mainActivity)
 
             }
             itemDescriptionViewType -> {
@@ -141,8 +143,27 @@ class MainAdapter(private val mainActivity: MainActivity, boxOffice: BoxOffice) 
                     .into(holder.movieImageView)
 
                 holder.itemView.setOnClickListener {
-                    if (videoId != null) {
-                        openVideo(videoId)
+
+                    if(mainActivity.isAdLoaded()){
+
+                        mainActivity.setActionAfterAd {
+                            if (videoId != null) {
+                                openVideo(videoId)
+                            }
+                        }
+
+                        mainActivity.interstitialAd.show()
+
+                    }
+
+                    else {
+
+                        //Toast.makeText(mainActivity, "Interstial Not Loaded", Toast.LENGTH_SHORT).show()
+
+                        mainActivity.loadInterstitialAd()
+                        if (videoId != null) {
+                            openVideo(videoId)
+                        }
                     }
                 }
 
@@ -178,8 +199,10 @@ class MainAdapter(private val mainActivity: MainActivity, boxOffice: BoxOffice) 
             Uri.parse("http://www.youtube.com/watch?v=$id")
         )
         try {
+            appIntent.putExtra("force_fullscreen", true)
             mainActivity.startActivity(appIntent)
         } catch (ex: ActivityNotFoundException) {
+            webIntent.putExtra("force_fullscreen", true)
             mainActivity.startActivity(webIntent)
         }
     }
@@ -205,6 +228,8 @@ class MainAdapter(private val mainActivity: MainActivity, boxOffice: BoxOffice) 
             }
         }
     }
+
+
 
 
 }

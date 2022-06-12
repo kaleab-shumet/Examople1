@@ -1,8 +1,5 @@
 package com.tnt.ethiopianmoviesboxoffice.pojo
 
-import com.google.firebase.firestore.Exclude
-
-
 class Item(
     var image: String? = null,
     var publishTime: String? = null,
@@ -12,7 +9,6 @@ class Item(
     var videoId: String? = null,
 ) {
 
-    @Exclude
     fun toMap(): Map<String, Any?> {
         return mapOf(
             "image" to image,

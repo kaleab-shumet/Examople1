@@ -9,19 +9,22 @@ import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.facebook.ads.*
 import com.google.android.material.snackbar.Snackbar
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Source
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.firestore.ktx.toObject
-import com.google.firebase.ktx.Firebase
+import com.google.gson.Gson
 import com.tnt.ethiopianmoviesboxoffice.Class.NativeAdClass
+import com.tnt.ethiopianmoviesboxoffice.NewPojo.FirebaseResponse
 import com.tnt.ethiopianmoviesboxoffice.adapters.MainAdapter
 import com.tnt.ethiopianmoviesboxoffice.pojo.BoxOffice
+import com.tnt.ethiopianmoviesboxoffice.pojo.MonthMovies
+import com.tnt.ethiopianmoviesboxoffice.pojo.Statistics
+import com.tnt.ethiopianmoviesboxoffice.pojo.YearMovies
+import okhttp3.*
+import java.io.IOException
 
 
 class MainActivity : AppCompatActivity() {
@@ -32,24 +35,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mainAdapter: MainAdapter
     private lateinit var mAdView: AdView
     private lateinit var mainRecyclerView: RecyclerView
-    private lateinit var db: FirebaseFirestore
     private val TAG: String = "MainActivity"
 
     private var canShowAds = true
 
     private lateinit var moviesLoadProgressBar: ProgressBar
 
+    private var actionAfterAd: ActionAfterAd? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-
-
-
         moviesLoadProgressBar = findViewById(R.id.load_movies_progress_bar)
 
-        db = Firebase.firestore
 
         mainRecyclerView = findViewById(R.id.main_recycler_view)
 
@@ -58,44 +57,42 @@ class MainActivity : AppCompatActivity() {
 
         loadBannerAd()
         loadInterstitialAd()
-        loadMovies(db)
+
+        loadMovies()
 
 
     }
 
-    private fun loadInterstitialAd() {
+    fun loadInterstitialAd() {
         interstitialAd =
             InterstitialAd(mainActivity, getString(R.string.facebook_interstitial_ad_unit))
         interstitialAd.loadAd(
             interstitialAd
                 .buildLoadAdConfig()
-                .withAdListener(object : InterstitialAdListener {
+                .withAdListener(object : InterstitialAdListener{
                     override fun onError(p0: Ad?, p1: AdError?) {
-
+                        if (p1 != null) {
+                            Log.e(TAG, "onError: Interstitial Ad Error - "+p1.errorMessage )
+                            //Toast.makeText(mainActivity, p1.errorMessage, Toast.LENGTH_LONG).show()
+                        }
+                       if(actionAfterAd != null) actionAfterAd!!.Action()
                     }
 
-                    override fun onAdLoaded(ad: Ad?) {
-
-                        if(isAdLoaded()){
-                            interstitialAd.show()
-                        }
-
+                    override fun onAdLoaded(p0: Ad?) {
                     }
 
                     override fun onAdClicked(p0: Ad?) {
-
+                        //if(actionAfterAd != null) actionAfterAd!!.Action()
                     }
 
                     override fun onLoggingImpression(p0: Ad?) {
-
                     }
 
                     override fun onInterstitialDisplayed(p0: Ad?) {
-
                     }
 
                     override fun onInterstitialDismissed(p0: Ad?) {
-
+                        if(actionAfterAd != null) actionAfterAd!!.Action()
                     }
                 })
                 .build()
@@ -135,28 +132,22 @@ class MainActivity : AppCompatActivity() {
         mAdView.loadAd(mAdView.buildLoadAdConfig().withAdListener(adListener).build())
     }
 
-    private fun loadMovies(db: FirebaseFirestore) {
+    private fun loadMovies() {
         moviesLoadProgressBar.visibility = VISIBLE
-        db.collection("EthiopianBoxOffice")
-            .get(Source.SERVER)
-            .addOnSuccessListener { result ->
-                runOnUiThread {
-                    moviesLoadProgressBar.visibility = GONE
-                }
 
-                for (document in result) {
-                    val boxOffice = document.toObject<BoxOffice>()
-                    mainAdapter = MainAdapter(this, boxOffice)
-                    mainRecyclerView.adapter = mainAdapter
-                    for (i in 1..4) {
-                        loadNativeAds()
-                    }
+        val client: OkHttpClient = OkHttpClient.Builder()
+            .build()
 
-                    break
-                }
-            }
-            .addOnFailureListener { exception ->
-                Log.w(TAG, "Error getting documents.", exception)
+
+        val request: Request = Request.Builder()
+            .url("https://firestore.googleapis.com/v1/projects/ethiopian-movies-box-office/databases/(default)/documents/EthiopianBoxOffice")
+            .build()
+
+        val call = client.newCall(request)
+        call.enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+
+                Log.e(TAG, "Error getting documents.", e)
                 runOnUiThread {
                     moviesLoadProgressBar.visibility = GONE
 
@@ -166,13 +157,125 @@ class MainActivity : AppCompatActivity() {
                         Snackbar.LENGTH_INDEFINITE
                     )
                         .setAction("Try Again") {
-                            loadMovies(db)
+                            loadMovies()
                         }.show()
 
                 }
 
 
             }
+
+            override fun onResponse(call: Call, response: Response) {
+
+                try {
+
+                    val resp: String = response.body!!.string()
+                    Log.d(TAG, "onResponse: $resp")
+                    val firebaseResponse: FirebaseResponse =
+                        Gson().fromJson(resp, FirebaseResponse::class.java)
+
+                    val yearMovies: ArrayList<YearMovies> = ArrayList()
+                    for (yearMoviesArrayVal in firebaseResponse.documents[0]?.fields?.yearMovies?.arrayValue?.values!!) {
+                        try {
+                            val publishTime =
+                                yearMoviesArrayVal?.mapValue?.fields?.publishTime?.stringValue
+                            val imageUrl = yearMoviesArrayVal?.mapValue?.fields?.imageUrl?.stringValue
+                            val videoId = yearMoviesArrayVal?.mapValue?.fields?.videoId?.stringValue
+                            val title = yearMoviesArrayVal?.mapValue?.fields?.title?.stringValue
+                            val thumbnailUrl =
+                                yearMoviesArrayVal?.mapValue?.fields?.thumbnailUrl?.stringValue
+                            val stat = yearMoviesArrayVal?.mapValue?.fields?.statistics?.mapValue?.fields
+
+                            val statistics = Statistics(
+                                stat?.likeCount?.stringValue,
+                                stat?.viewCount?.stringValue,
+                                stat?.favoriteCount?.stringValue,
+                                stat?.commentCount?.stringValue
+                            )
+                            yearMovies.add(
+                                YearMovies(
+                                    publishTime,
+                                    imageUrl,
+                                    videoId,
+                                    title,
+                                    thumbnailUrl,
+                                    statistics
+                                )
+                            )
+
+                        } catch (e: Exception) {
+
+                        }
+
+
+                    }
+
+                    val createdTime: Long? =
+                        firebaseResponse.documents[0]?.fields?.createdTime?.integerValue?.toLongOrNull()
+
+                    val monthMovies: ArrayList<MonthMovies> = ArrayList()
+                    for (monthMoviesVal in firebaseResponse.documents[0]?.fields?.monthMovies?.arrayValue?.values!!) {
+
+                        try {
+                            val publishTime = monthMoviesVal?.mapValue?.fields?.publishTime?.stringValue
+                            val imageUrl = monthMoviesVal?.mapValue?.fields?.imageUrl?.stringValue
+                            val videoId = monthMoviesVal.mapValue?.fields?.videoId?.stringValue
+                            val title = monthMoviesVal?.mapValue?.fields?.title?.stringValue
+                            val thumbnailUrl =
+                                monthMoviesVal?.mapValue?.fields?.thumbnailUrl?.stringValue
+                            val stat = monthMoviesVal?.mapValue?.fields?.statistics?.mapValue?.fields
+
+                            val statistics = Statistics(
+                                stat?.likeCount?.stringValue,
+                                stat?.viewCount?.stringValue,
+                                stat?.favoriteCount?.stringValue,
+                                stat?.commentCount?.stringValue
+                            )
+
+                            monthMovies.add(
+                                MonthMovies(
+                                    publishTime,
+                                    imageUrl,
+                                    videoId,
+                                    title,
+                                    thumbnailUrl,
+                                    statistics
+                                )
+                            )
+
+                        } catch (e: Exception) {
+
+                        }
+
+
+                    }
+
+                    val uuid: String = firebaseResponse.documents[0].fields.uuid.stringValue
+
+                    val boxOffice = BoxOffice(
+                        yearMovies = yearMovies,
+                        createdTime = createdTime,
+                        monthMovies = monthMovies,
+                        uuid = uuid
+                    )
+
+
+                    mainAdapter = MainAdapter(mainActivity, boxOffice)
+
+                    runOnUiThread {
+                        moviesLoadProgressBar.visibility = GONE
+                        mainRecyclerView.adapter = mainAdapter
+                        loadNativeAds()
+                    }
+
+                } catch (e: Exception) {
+
+                }
+
+
+            }
+        })
+
     }
 
     private fun loadNativeAds() {
@@ -251,17 +354,23 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         canShowAds = true
-        if(isAdLoaded()){
+        /*if (isAdLoaded()) {
             interstitialAd.show()
-        }
+        }*/
     }
 
-    private fun isAdLoaded() : Boolean{
-        return if(interstitialAd != null) {
+    fun isAdLoaded(): Boolean {
+        return if (interstitialAd != null) {
             canShowAds && interstitialAd.isAdLoaded
         } else {
             false
         }
     }
+
+    fun setActionAfterAd(actionAfterAd: ActionAfterAd){
+        this.actionAfterAd = actionAfterAd
+    }
+
+
 
 }
